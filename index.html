@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Fragrance Shelf</title>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@200;300;400&family=Inter:wght@200;300;400&family=DM+Sans:wght@200;300;400&family=Outfit:wght@200;300;400&family=Syne:wght@300;400&family=Space+Grotesk:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Playfair+Display:wght@300;400&family=EB+Garamond:wght@400&family=Libre+Baskerville:wght@400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--b:#e8e8e8;--mu:#aaa;--sz:54;}
+body{background:#f0f0f0;font-family:'Jost',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none;}
+
+/* toolbar */
+.tb{display:flex;align-items:center;gap:7px;padding:8px 14px;background:#fff;border-bottom:1px solid var(--b);flex-shrink:0;-webkit-app-region:drag;overflow-x:auto;}
+.tb>*{-webkit-app-region:no-drag;flex-shrink:0;}
+.tb-title{font-size:11px;font-weight:300;letter-spacing:.3em;color:#999;text-transform:uppercase;}
+.sep{width:1px;height:16px;background:var(--b);}
+.lbl{font-size:10px;color:var(--mu);letter-spacing:.08em;}
+.btn,.sel{font-size:11px;padding:3px 11px;border:1px solid var(--b);border-radius:3px;background:#fff;color:#555;cursor:pointer;font-family:'Jost',sans-serif;font-weight:300;outline:none;transition:background .1s;}
+.btn:hover,.sel:hover{background:#f5f5f5;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-dark{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+.btn-dark:hover{background:#333;}
+.btn-green{background:#2d6a4f;color:#fff;border-color:#2d6a4f;}
+.btn-green:hover{background:#3a8a65;}
+.readout{font-size:11px;color:#555;min-width:28px;text-align:center;}
+.ml-auto{margin-left:auto;}
+
+/* shelf tabs */
+.tabs{display:flex;align-items:center;padding:0 16px;background:#fff;border-bottom:1px solid var(--b);flex-shrink:0;gap:0;overflow-x:auto;}
+.tab{font-size:11px;font-weight:300;letter-spacing:.1em;padding:7px 14px;cursor:pointer;border:none;border-bottom:2px solid transparent;color:#aaa;background:none;font-family:'Jost',sans-serif;white-space:nowrap;transition:all .15s;}
+.tab:hover{color:#666;}
+.tab.on{color:#333;border-bottom-color:#333;}
+.tab-add{font-size:16px;padding:4px 10px;color:#ccc;cursor:pointer;background:none;border:none;font-family:'Jost',sans-serif;line-height:1;}
+.tab-add:hover{color:#888;}
+
+/* filter */
+.filters{display:flex;align-items:center;gap:7px;padding:5px 16px;background:#fafafa;border-bottom:1px solid var(--b);flex-shrink:0;overflow-x:auto;}
+.chip{font-size:10px;padding:2px 9px;border:1px solid var(--b);border-radius:20px;background:#fff;color:#888;cursor:pointer;font-family:'Jost',sans-serif;white-space:nowrap;transition:all .12s;}
+.chip:hover{border-color:#aaa;color:#555;}
+.chip.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+.fsep{color:#ddd;font-size:11px;}
+
+/* main */
+.main{flex:1;overflow:auto;padding:24px 22px 56px;}
+.canvas{display:table;background:#fff;padding:26px 22px;border-radius:8px;box-shadow:0 2px 14px #0001;}
+.shelf-title{text-align:center;letter-spacing:.5em;color:#ccc;text-transform:uppercase;margin-bottom:22px;font-weight:200;font-size:calc(var(--sz)*.2px);white-space:nowrap;outline:none;cursor:text;}
+.shelf-title:focus{color:#aaa;}
+.shelf-footer{text-align:center;color:#ddd;letter-spacing:.3em;margin-top:14px;font-weight:200;font-size:calc(var(--sz)*.14px);white-space:nowrap;outline:none;cursor:text;}
+.shelf-footer:focus{color:#bbb;}
+.empty-msg{text-align:center;color:#ccc;font-weight:200;font-size:13px;letter-spacing:.15em;padding:40px 32px;white-space:nowrap;}
+
+/* shelf row */
+.row{display:grid;grid-template-rows:auto auto calc(var(--sz)*.11px);margin-bottom:calc(var(--sz)*.32px);}
+.bhdr{grid-row:1;display:flex;align-items:center;justify-content:center;padding:calc(var(--sz)*.06px) 4px calc(var(--sz)*.04px);overflow:hidden;cursor:grab;transition:opacity .15s;}
+.bhdr.drag-src{opacity:.3;}
+.bhdr.drag-over{outline:2px dashed #999;outline-offset:-2px;}
+.blog{max-width:88%;max-height:calc(var(--sz)*.44px);width:auto;height:auto;object-fit:contain;mix-blend-mode:multiply;opacity:.8;display:block;pointer-events:none;}
+.bname-fb{text-transform:uppercase;font-weight:300;letter-spacing:.13em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:92%;font-size:calc(var(--sz)*.115px);pointer-events:none;}
+.bcell{grid-row:2;display:flex;flex-direction:column;align-items:center;padding:calc(var(--sz)*.1px) 0 0;min-width:0;position:relative;cursor:pointer;}
+.bcell:hover .delbtn{opacity:1;}
+.bcell.dim{opacity:.22;}
+.delbtn{position:absolute;top:3px;right:3px;width:17px;height:17px;border-radius:50%;background:#ff4444cc;color:#fff;border:none;font-size:11px;cursor:pointer;opacity:0;transition:opacity .15s;display:flex;align-items:center;justify-content:center;z-index:5;}
+.wbadge{position:absolute;top:3px;left:3px;font-size:7px;padding:1px 4px;border-radius:3px;background:#f0e8ff;color:#8860cc;font-family:'Jost',sans-serif;font-weight:300;}
+.bwrap{width:calc(var(--sz)*.82px);height:calc(var(--sz)*1.38px);display:flex;align-items:flex-end;justify-content:center;}
+.bwrap img{height:calc(var(--sz)*1.28px);width:auto;max-width:calc(var(--sz)*.8px);object-fit:contain;display:block;mix-blend-mode:multiply;}
+.stars{display:flex;gap:1px;margin-top:2px;}
+.star{font-size:calc(var(--sz)*.09px);color:#e0e0e0;cursor:pointer;transition:color .1s;line-height:1;}
+.star.on{color:#f4a620;}
+.canvas.hide-stars .stars{display:none!important;}
+.btext{color:#bbb;text-align:center;line-height:1.35;max-width:calc(var(--sz)*.96px);word-break:break-word;font-weight:200;font-size:calc(var(--sz)*.12px);margin-top:calc(var(--sz)*.07px);margin-bottom:calc(var(--sz)*.16px);}
+.plank{grid-row:3;grid-column:1/-1;background:#ccc4b8;border-radius:0 0 2px 2px;position:relative;}
+.plank::before{content:'';position:absolute;top:0;left:0;right:0;height:40%;background:linear-gradient(90deg,transparent,#e8ddd0 20%,#f0e8dc 50%,#e8ddd0 80%,transparent);}
+
+/* note tooltip */
+.ntip{position:fixed;background:#1a1a1aee;color:#fff;border-radius:7px;padding:9px 12px;font-size:10px;font-family:'Jost',sans-serif;z-index:400;pointer-events:none;opacity:0;transition:opacity .15s;max-width:190px;backdrop-filter:blur(4px);}
+.ntip.show{opacity:1;}
+.ntip-row{margin-bottom:4px;}.ntip-row:last-child{margin-bottom:0;}
+.ntip-lbl{font-size:8px;color:#aaa;letter-spacing:.15em;text-transform:uppercase;margin-bottom:2px;}
+.ntip-pills{display:flex;flex-wrap:wrap;gap:2px;}
+.ntip-pill{background:#fff2;padding:1px 5px;border-radius:8px;font-size:9px;}
+
+/* context menu */
+.cmenu{position:fixed;background:#fff;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 4px 22px #0002;padding:5px 0;min-width:185px;z-index:300;font-family:'Jost',sans-serif;}
+.cmenu.hide{display:none;}
+.cm-lbl{font-size:9px;color:#bbb;letter-spacing:.15em;text-transform:uppercase;padding:5px 13px 2px;font-weight:300;}
+.cm-item{font-size:11px;color:#444;padding:6px 13px;cursor:pointer;font-weight:300;transition:background .1s;}
+.cm-item:hover{background:#f5f5f5;}
+.cm-item.red{color:#c44;}
+.cm-sep{height:1px;background:#f0f0f0;margin:3px 0;}
+.cm-swatches{display:flex;gap:5px;padding:5px 13px 7px;flex-wrap:wrap;}
+.swatch{width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .1s;}
+.swatch:hover{transform:scale(1.2);}
+.swatch.on{border-color:#333;}
+.bgswatches{display:flex;gap:5px;padding:4px 13px 7px;flex-wrap:wrap;}
+.bgsw{width:22px;height:14px;border-radius:3px;cursor:pointer;border:2px solid transparent;transition:transform .1s;}
+.bgsw:hover{transform:scale(1.1);}
+.bgsw.on{border-color:#333;}
+
+/* detail modal */
+.overlay{position:fixed;inset:0;background:#00000055;display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(3px);}
+.overlay.hide{display:none;}
+.modal{background:#fff;border-radius:10px;padding:22px 22px 16px;width:500px;max-width:92vw;box-shadow:0 8px 36px #0002;font-family:'Jost',sans-serif;}
+.dg{display:grid;grid-template-columns:90px 1fr;gap:14px;align-items:start;}
+.dimg{width:90px;height:126px;object-fit:contain;mix-blend-mode:multiply;}
+.dbrand{font-size:9px;color:#aaa;letter-spacing:.15em;text-transform:uppercase;margin-bottom:3px;}
+.dname{font-size:15px;font-weight:300;color:#333;margin-bottom:10px;line-height:1.3;}
+.drow{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.dlbl{font-size:9px;color:#bbb;letter-spacing:.1em;text-transform:uppercase;min-width:54px;}
+.dstars{display:flex;gap:2px;}
+.dstar{font-size:15px;color:#e0e0e0;cursor:pointer;transition:color .1s;}
+.dstar.on{color:#f4a620;}
+.trow{display:flex;gap:6px;}
+.tbtn{font-size:10px;padding:3px 9px;border:1px solid var(--b);border-radius:12px;background:#fff;color:#888;cursor:pointer;font-family:'Jost',sans-serif;transition:all .1s;}
+.tbtn.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+.tags-wrap{display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+.tag-chip{font-size:10px;padding:2px 7px;background:#f0f0f0;border-radius:9px;color:#666;display:inline-flex;align-items:center;gap:3px;}
+.tag-rm{color:#bbb;cursor:pointer;font-size:11px;line-height:1;}
+.tag-rm:hover{color:#c44;}
+.tag-add{font-size:10px;padding:2px 7px;border:1px dashed #ddd;border-radius:9px;color:#bbb;cursor:pointer;background:none;}
+.tag-add:hover{border-color:#aaa;color:#888;}
+.notes-sec .ng{margin-bottom:6px;}
+.ng-lbl{font-size:8px;color:#bbb;letter-spacing:.15em;text-transform:uppercase;margin-bottom:3px;}
+.ng-val{font-size:11px;color:#666;font-weight:300;}
+.durl{font-size:10px;color:#7a9e8a;cursor:pointer;text-decoration:underline;margin-top:4px;display:inline-block;}
+.mfooter{display:flex;justify-content:flex-end;gap:7px;margin-top:12px;}
+.btn-red{color:#c44;border-color:#c44;background:#fff;}
+
+/* add modal */
+.am-hint{font-size:10px;color:#bbb;line-height:1.6;margin-bottom:6px;}
+.am-load{font-size:11px;color:#999;text-align:center;padding:4px 0;min-height:16px;}
+.irow{display:flex;gap:7px;margin-bottom:7px;}
+.irow input{flex:1;padding:7px 10px;border:1px solid var(--b);border-radius:4px;font-size:12px;font-family:'Jost',sans-serif;font-weight:300;outline:none;}
+.irow input:focus{border-color:#999;}
+.irow input::placeholder{color:#ccc;}
+
+/* inline prompt */
+.iprompt{position:fixed;inset:0;background:#00000044;display:flex;align-items:center;justify-content:center;z-index:600;}
+.iprompt.hide{display:none;}
+.ipbox{background:#fff;border-radius:10px;padding:18px 20px 14px;width:300px;box-shadow:0 8px 36px #0003;font-family:'Jost',sans-serif;}
+.iplbl{font-size:12px;color:#555;font-weight:300;margin-bottom:8px;}
+.ipinput{width:100%;padding:7px 10px;border:1px solid var(--b);border-radius:4px;font-size:12px;font-family:'Jost',sans-serif;outline:none;margin-bottom:10px;}
+.ipinput:focus{border-color:#888;}
+.ipbtns{display:flex;justify-content:flex-end;gap:7px;}
+
+/* zoom handle */
+.zh{position:fixed;bottom:12px;right:16px;background:#fff;border:1px solid #ddd;border-radius:18px;padding:5px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px #0001;z-index:50;}
+.zt{width:76px;height:4px;background:#eee;border-radius:2px;position:relative;cursor:pointer;}
+.zth{width:13px;height:13px;background:#555;border-radius:50%;position:absolute;top:-4.5px;transform:translateX(-50%);cursor:ew-resize;}
+.zth:hover{background:#222;}
+.zlbl{font-size:10px;color:#999;min-width:32px;text-align:right;}
+
+/* toast */
+.toast{position:fixed;bottom:46px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;font-size:11px;letter-spacing:.07em;padding:6px 16px;border-radius:18px;font-family:'Jost',sans-serif;opacity:0;transition:opacity .3s;pointer-events:none;z-index:500;white-space:nowrap;}
+.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- toolbar -->
+<div class="tb">
+  <span class="tb-title">Fragrance Shelf</span>
+  <div class="sep"></div>
+  <span class="lbl">font</span>
+  <select id="font-sel" class="sel">
+    <option value="Jost">Jost</option><option value="Inter">Inter</option>
+    <option value="DM Sans">DM Sans</option><option value="Outfit">Outfit</option>
+    <option value="Syne">Syne</option><option value="Space Grotesk">Space Grotesk</option>
+    <option value="Cormorant Garamond">Cormorant Garamond</option>
+    <option value="Playfair Display">Playfair Display</option>
+    <option value="EB Garamond">EB Garamond</option>
+    <option value="Libre Baskerville">Libre Baskerville</option>
+  </select>
+  <div class="sep"></div>
+  <span class="lbl">cols</span>
+  <button class="btn" id="col-dn">−</button>
+  <span class="readout" id="col-val">10</span>
+  <button class="btn" id="col-up">+</button>
+  <div class="sep"></div>
+  <button class="btn" id="stars-btn">★ show</button>
+  <div class="sep"></div>
+  <button class="btn btn-dark" id="add-btn">+ Add</button>
+  <button class="btn btn-green" id="save-btn">Save PNG</button>
+  <button class="btn" id="copy-btn">Copy</button>
+  <button class="btn" id="export-btn">Export</button>
+  <button class="btn" id="import-btn">Import</button>
+  <span class="ml-auto" style="font-size:10px;color:var(--mu);letter-spacing:.1em;" id="count-lbl"></span>
+</div>
+
+<!-- tabs -->
+<div class="tabs" id="tabs">
+  <button class="tab-add" id="tab-add">+</button>
+</div>
+
+<!-- filters -->
+<div class="filters">
+  <span class="lbl">show</span>
+  <button class="chip on" data-f="all">All</button>
+  <button class="chip" data-f="owned">Owned</button>
+  <button class="chip" data-f="wish">Wishlist</button>
+  <span class="fsep">|</span>
+  <span class="lbl">tag</span>
+  <div id="tag-chips"></div>
+</div>
+
+<!-- main -->
+<div class="main">
+  <div class="canvas" id="canvas" style="--sz:54">
+    <div class="shelf-title" id="shelf-title" contenteditable="true" spellcheck="false">My Fragrance Collection</div>
+    <div id="grid"></div>
+    <div class="shelf-footer" id="shelf-footer" contenteditable="true" spellcheck="false">✦  0 bottles  ✦</div>
+  </div>
+</div>
+
+<!-- context menu -->
+<div class="cmenu hide" id="cmenu">
+  <div class="cm-lbl">Sort</div>
+  <div class="cm-item" id="cm-asc">↑ Name A→Z</div>
+  <div class="cm-item" id="cm-desc">↓ Name Z→A</div>
+  <div class="cm-sep"></div>
+  <div class="cm-lbl">Brand Color</div>
+  <div class="cm-swatches" id="cm-swatches"></div>
+  <div class="cm-sep"></div>
+  <div class="cm-lbl">Shelf Background</div>
+  <div class="bgswatches" id="cm-bg"></div>
+  <div class="cm-sep"></div>
+  <div class="cm-item red" id="cm-del-brand">✕ Remove Brand</div>
+</div>
+
+<!-- detail modal -->
+<div class="overlay hide" id="det-overlay">
+  <div class="modal">
+    <div class="dg">
+      <img class="dimg" id="det-img" src="" alt="">
+      <div>
+        <div class="dbrand" id="det-brand"></div>
+        <div class="dname"  id="det-name"></div>
+        <div class="drow"><span class="dlbl">Rating</span><div class="dstars" id="det-stars"></div></div>
+        <div class="drow"><span class="dlbl">Status</span>
+          <div class="trow">
+            <button class="tbtn" id="det-owned">Owned</button>
+            <button class="tbtn" id="det-wish">Wishlist</button>
+          </div>
+        </div>
+        <div class="drow" style="align-items:flex-start">
+          <span class="dlbl">Tags</span>
+          <div class="tags-wrap" id="det-tags"></div>
+        </div>
+        <div class="notes-sec" id="det-notes"></div>
+        <div id="det-url"></div>
+      </div>
+    </div>
+    <div class="mfooter">
+      <button class="btn btn-red" id="det-del" style="margin-right:auto;">Remove</button>
+      <button class="btn" id="det-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- add modal -->
+<div class="overlay hide" id="add-overlay">
+  <div class="modal" style="width:460px;">
+    <div style="font-size:12px;font-weight:300;letter-spacing:.2em;text-transform:uppercase;color:#333;margin-bottom:14px;">Add Perfume</div>
+    <div class="irow">
+      <input type="text" id="add-url" placeholder="https://www.fragrantica.com/perfume/...">
+      <button class="btn btn-dark" id="add-go">Add</button>
+    </div>
+    <div class="am-hint">Fragrantica 향수 페이지 URL을 붙여넣으세요.<br>예) https://www.fragrantica.com/perfume/Creed/Aventus-9828.html</div>
+    <div class="am-load" id="add-load"></div>
+    <div class="mfooter"><button class="btn" id="add-close">Close</button></div>
+  </div>
+</div>
+
+<!-- inline prompt -->
+<div class="iprompt hide" id="ipdiv">
+  <div class="ipbox">
+    <div class="iplbl" id="iplbl">Enter:</div>
+    <input class="ipinput" id="ipinput" type="text">
+    <div class="ipbtns">
+      <button class="btn" id="ip-cancel">Cancel</button>
+      <button class="btn btn-dark" id="ip-ok">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- note tooltip -->
+<div class="ntip" id="ntip"></div>
+
+<!-- zoom handle -->
+<div class="zh">
+  <span style="font-size:10px;color:#bbb;">zoom</span>
+  <div class="zt" id="zt"><div class="zth" id="zth"></div></div>
+  <span class="zlbl" id="zlbl">100%</span>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let perfumes  = [];   // 전체 향수 DB
+let shelves   = {};   // { id: {name, perfumeIds[]} }
+let shelfOrder= [];   // shelf id 순서
+let activeShelf = 'default';
+let bSettings = {};   // { brand: { colorIdx, sortDesc } }
+let bOrder    = [];   // 브랜드 순서
+let font      = 'Jost';
+let COLS      = 10;
+let SZ        = 54;
+const SZ_MIN  = 28, SZ_MAX = 160;
+let filterMode = 'all';
+let filterTag  = null;
+let showStars  = true;
+let detId      = null;
+let ctxBrand   = null;
+
+// ═══════════════════════════════════════════
+// PALETTE
+// ═══════════════════════════════════════════
+const PAL = [
+  {c:'#7a9e8a',bg:'#f2f8f5'},{c:'#7878aa',bg:'#f3f3f9'},{c:'#b08070',bg:'#f9f3f1'},
+  {c:'#5a9aaa',bg:'#f0f6f8'},{c:'#aa7a60',bg:'#f9f3f0'},{c:'#7a9a60',bg:'#f3f8ee'},
+  {c:'#9a6090',bg:'#f8f0f6'},{c:'#6a80aa',bg:'#f1f3f9'},{c:'#aa9a60',bg:'#f9f6ee'},
+  {c:'#609999',bg:'#eef5f5'},{c:'#8a6060',bg:'#f8f0f0'},
+];
+const BG_PAL = ['#ffffff','#fdf8f3','#f3f8fd','#f3fdf8','#fdf3f8','#fdfdf3','#f3f3fd','#2a2a2a','#2d3436','#2d4a3e'];
+const LOGO = {
+  'by kilian':'491','kilian':'491','byredo':'390','dior':'160','christian dior':'160',
+  'diptyque':'421','ex nihilo':'2064','frederic malle':'140','frédéric malle':'140',
+  'givenchy':'66','guerlain':'68','hermès':'69','hermes':'69',
+  'jo malone':'273','jo malone london':'273','loewe':'293','louis vuitton':'2747',
+  'maison alhambra':'4828','maison francis kurkdjian':'770','mfk':'770',
+  'memo paris':'315','memo':'315','parfums de marly':'1188','tom ford':'139',
+  'chanel':'19','ysl':'71','yves saint laurent':'71','lancôme':'14','lancome':'14',
+  'creed':'50','acqua di parma':'247',"penhaligon's":'130',
+  'maison margiela':'1295','le labo':'822','serge lutens':'186',
+  'amouage':'323','xerjoff':'1050','mancera':'1243','initio':'2613',
+};
+
+function brandColor(brand) {
+  const s = bSettings[brand];
+  if (s?.colorIdx !== undefined) return PAL[s.colorIdx % PAL.length];
+  let h = 0; for (const c of (brand||'')) h=(h*31+c.charCodeAt(0))&0xffffffff;
+  return PAL[Math.abs(h)%PAL.length];
+}
+function logoUrl(p) {
+  if (p?.logoUrl) return p.logoUrl;
+  const id = LOGO[(p?.brand||'').toLowerCase().trim()];
+  return id ? `https://fimgs.net/mdimg/dizajneri/o.${id}.jpg` : null;
+}
+
+// ═══════════════════════════════════════════
+// INLINE PROMPT
+// ═══════════════════════════════════════════
+function iask(label, def='') {
+  return new Promise(res => {
+    const ov = document.getElementById('ipdiv');
+    const inp = document.getElementById('ipinput');
+    document.getElementById('iplbl').textContent = label;
+    inp.style.display = '';
+    inp.value = def;
+    ov.classList.remove('hide');
+    setTimeout(() => { inp.focus(); inp.select(); }, 30);
+    const done = v => {
+      ov.classList.add('hide');
+      cleanup();
+      res(v);
+    };
+    const ok  = () => done(inp.value.trim()||null);
+    const cancel = () => done(null);
+    document.getElementById('ip-ok').onclick     = ok;
+    document.getElementById('ip-cancel').onclick = cancel;
+    document.getElementById('ipdiv').onclick = e => { if(e.target===document.getElementById('ipdiv')) cancel(); };
+    inp.onkeydown = e => { if(e.key==='Enter') ok(); if(e.key==='Escape') cancel(); };
+    function cleanup() {
+      document.getElementById('ip-ok').onclick     = null;
+      document.getElementById('ip-cancel').onclick = null;
+      document.getElementById('ipdiv').onclick     = null;
+      inp.onkeydown = null;
+    }
+  });
+}
+function iconfirm(msg) {
+  return new Promise(res => {
+    const ov  = document.getElementById('ipdiv');
+    const inp = document.getElementById('ipinput');
+    document.getElementById('iplbl').textContent = msg;
+    inp.style.display = 'none';
+    ov.classList.remove('hide');
+    const done = v => { ov.classList.add('hide'); inp.style.display=''; cleanup(); res(v); };
+    document.getElementById('ip-ok').onclick     = () => done(true);
+    document.getElementById('ip-cancel').onclick = () => done(false);
+    document.getElementById('ipdiv').onclick = e => { if(e.target===document.getElementById('ipdiv')) done(false); };
+    function cleanup() {
+      document.getElementById('ip-ok').onclick     = null;
+      document.getElementById('ip-cancel').onclick = null;
+      document.getElementById('ipdiv').onclick     = null;
+    }
+  });
+}
+
+// ═══════════════════════════════════════════
+// SHELF TABS
+// ═══════════════════════════════════════════
+function renderTabs() {
+  const bar = document.getElementById('tabs');
+  const addBtn = document.getElementById('tab-add');
+  // 기존 탭 제거
+  bar.querySelectorAll('.tab').forEach(t => t.remove());
+  shelfOrder.forEach(id => {
+    if (!shelves[id]) return;
+    const t = document.createElement('button');
+    t.className = 'tab' + (id===activeShelf?' on':'');
+    t.textContent = shelves[id].name;
+    t.onclick = () => switchShelf(id);
+    t.oncontextmenu = async e => { e.preventDefault(); await renameShelf(id); };
+    bar.insertBefore(t, addBtn);
+  });
+}
+function switchShelf(id) {
+  activeShelf = id;
+  const sh = shelves[id];
+  document.getElementById('shelf-title').textContent = sh?.name || 'My Collection';
+  bOrder = [];
+  renderTabs();
+  layout();
+  saveAll();
+}
+document.getElementById('tab-add').onclick = async () => {
+  const name = await iask('New shelf name:');
+  if (!name) return;
+  const id = 'sh_' + Date.now();
+  shelves[id] = { name, perfumeIds:[] };
+  shelfOrder.push(id);
+  switchShelf(id);
+};
+async function renameShelf(id) {
+  const name = await iask('Rename:', shelves[id].name);
+  if (!name) return;
+  shelves[id].name = name;
+  if (id===activeShelf) document.getElementById('shelf-title').textContent = name;
+  renderTabs();
+  saveAll();
+}
+
+// ═══════════════════════════════════════════
+// DATA HELPERS
+// ═══════════════════════════════════════════
+function shelfPerfumes() {
+  const ids = new Set(shelves[activeShelf]?.perfumeIds||[]);
+  return perfumes.filter(p => ids.has(p.id));
+}
+function sortedPerfumes() {
+  const sp = shelfPerfumes();
+  const byBrand = {};
+  sp.forEach(p => { if(!byBrand[p.brand]) byBrand[p.brand]=[]; byBrand[p.brand].push(p); });
+  // bOrder에 없는 브랜드 알파벳순으로 추가
+  Object.keys(byBrand).sort((a,b)=>a.localeCompare(b)).forEach(b => { if(!bOrder.includes(b)) bOrder.push(b); });
+  bOrder = bOrder.filter(b => byBrand[b]);
+  const out = [];
+  bOrder.forEach(brand => {
+    const arr = [...byBrand[brand]];
+    if (bSettings[brand]?.sortDesc) arr.sort((a,b)=>b.name.localeCompare(a.name));
+    else arr.sort((a,b)=>a.name.localeCompare(b.name));
+    out.push(...arr);
+  });
+  return out;
+}
+function filteredIds() {
+  let list = shelfPerfumes();
+  if (filterMode==='owned')  list = list.filter(p=>p.owned&&!p.wishlist);
+  if (filterMode==='wish')   list = list.filter(p=>p.wishlist);
+  if (filterTag) list = list.filter(p=>(p.tags||[]).includes(filterTag));
+  return new Set(list.map(p=>p.id));
+}
+function allTags() {
+  const t = new Set();
+  shelfPerfumes().forEach(p=>(p.tags||[]).forEach(x=>t.add(x)));
+  return [...t].sort();
+}
+
+function updatePerfume(id, fields) {
+  const p = perfumes.find(x=>x.id===id);
+  if (!p) return;
+  Object.assign(p, fields);
+  saveAll();
+}
+function addPerfume(p) {
+  if (!perfumes.find(x=>x.id===p.id)) perfumes.push(p);
+  const sh = shelves[activeShelf];
+  if (sh && !sh.perfumeIds.includes(p.id)) sh.perfumeIds.push(p.id);
+  saveAll(); layout(); toast(`✦ ${p.name} added`);
+}
+function removePerfume(id) {
+  const sh = shelves[activeShelf];
+  if (sh) sh.perfumeIds = sh.perfumeIds.filter(x=>x!==id);
+  saveAll(); layout();
+}
+
+async function saveAll() {
+  await Promise.all([
+    window.api.dbSet('perfumes', perfumes),
+    window.api.dbSet('settings', { bSettings, bOrder, font, COLS, activeShelf, shelfOrder }),
+    window.api.dbSet('shelves', { shelves, shelfOrder }),
+  ]);
+}
+
+// ═══════════════════════════════════════════
+// TAG FILTER BAR
+// ═══════════════════════════════════════════
+function renderTagChips() {
+  const wrap = document.getElementById('tag-chips');
+  wrap.innerHTML = '';
+  allTags().forEach(tag => {
+    const c = document.createElement('button');
+    c.className = 'chip' + (filterTag===tag?' on':'');
+    c.textContent = tag;
+    c.onclick = () => { filterTag = filterTag===tag ? null : tag; renderTagChips(); layout(); };
+    wrap.appendChild(c);
+  });
+}
+
+// ═══════════════════════════════════════════
+// LAYOUT
+// ═══════════════════════════════════════════
+function layout() {
+  renderTagChips();
+  const grid   = document.getElementById('grid');
+  const footer = document.getElementById('shelf-footer');
+  grid.innerHTML = '';
+  const sorted = sortedPerfumes();
+  const total  = shelfPerfumes().length;
+  if (document.activeElement?.id !== 'shelf-footer')
+    footer.textContent = `✦  ${total} bottle${total!==1?'s':''}  ✦`;
+  document.getElementById('count-lbl').textContent = total + ' bottles';
+  if (!sorted.length) {
+    grid.innerHTML = '<div class="empty-msg">No perfumes — click "+ Add" to start.</div>';
+    return;
+  }
+  const vis = filteredIds();
+  const rows = [];
+  for (let i=0; i<sorted.length; i+=COLS) rows.push(sorted.slice(i,i+COLS));
+  rows.forEach(row => {
+    const N = row.length;
+    const rowEl = document.createElement('div');
+    rowEl.className = 'row';
+    rowEl.style.gridTemplateColumns = `repeat(${N},${SZ}px)`;
+    rowEl.style.gridTemplateRows = `auto auto ${Math.round(SZ*.11)}px`;
+    // segments
+    const segs=[]; let seg=null;
+    row.forEach((p,i)=>{
+      if(!seg||seg.brand!==p.brand){seg={brand:p.brand,start:i+1,count:0,p};segs.push(seg);}
+      seg.count++;
+    });
+    // headers
+    segs.forEach(s=>{
+      const col=brandColor(s.brand), logo=logoUrl(s.p);
+      const hdr=document.createElement('div');
+      hdr.className='bhdr';hdr.dataset.brand=s.brand;hdr.draggable=true;
+      hdr.style.cssText=`grid-column:${s.start}/span ${s.count};grid-row:1;background:${col.bg};border-top:2px solid ${col.c};border-left:1px solid ${col.c}55;border-right:1px solid ${col.c}55;`;
+      if(logo){
+        const img=document.createElement('img');img.className='blog';img.src=logo;img.alt=s.brand;
+        img.onerror=()=>{img.remove();fb(hdr,s.brand,col);};
+        hdr.appendChild(img);
+      } else fb(hdr,s.brand,col);
+      hdr.addEventListener('dragstart',dsStart);
+      hdr.addEventListener('dragover',dsOver);
+      hdr.addEventListener('dragleave',dsLeave);
+      hdr.addEventListener('drop',dsDrop);
+      hdr.addEventListener('dragend',dsEnd);
+      hdr.addEventListener('contextmenu',e=>{e.preventDefault();openCtx(e,s.brand);});
+      rowEl.appendChild(hdr);
+    });
+    // bottles
+    row.forEach((p,i)=>{
+      const col=brandColor(p.brand);
+      const seg=segs.find(s=>s.brand===p.brand&&s.start<=i+1&&s.start+s.count>i+1);
+      const first=i+1===seg.start, last=i+1===seg.start+seg.count-1;
+      const cell=document.createElement('div');
+      cell.className='bcell'+(vis.has(p.id)?'':' dim');
+      cell.style.cssText=`grid-column:${i+1};grid-row:2;background:${col.bg}99;${first?`border-left:1px solid ${col.c}44`:''}${last?`;border-right:1px solid ${col.c}44`:''}`;
+      cell.onclick=()=>openDet(p);
+      const del=document.createElement('button');del.className='delbtn';del.textContent='×';
+      del.onclick=e=>{e.stopPropagation();removePerfume(p.id);};
+      cell.appendChild(del);
+      if(p.wishlist){const b=document.createElement('span');b.className='wbadge';b.textContent='wish';cell.appendChild(b);}
+      const wrap=document.createElement('div');wrap.className='bwrap';
+      const img=document.createElement('img');img.alt=p.name||'';
+      img.src=p.imgHq||`https://fimgs.net/mdimg/perfume-thumbs/375x500.${p.id}.jpg`;
+      img.onerror=function(){const lq=p.imgLq||`https://fimgs.net/mdimg/perfume-thumbs/dark-m.${p.id}.jpg`;if(this.src!==lq)this.src=lq;};
+      wrap.appendChild(img);cell.appendChild(wrap);
+      // stars
+      const st=document.createElement('div');st.className='stars';
+      for(let s=1;s<=5;s++){
+        const star=document.createElement('span');star.className='star'+(p.rating>=s?' on':'');star.textContent='★';
+        star.onclick=e=>{e.stopPropagation();const r=p.rating===s?0:s;updatePerfume(p.id,{rating:r});layout();};
+        st.appendChild(star);
+      }
+      cell.appendChild(st);
+      const nm=document.createElement('div');nm.className='btext';nm.textContent=p.name||'';
+      cell.appendChild(nm);
+      // note tooltip
+      const notes=p.notes||{};
+      if((notes.top||[]).length||(notes.middle||[]).length||(notes.base||[]).length){
+        cell.addEventListener('mouseenter',e=>showTip(e,p));
+        cell.addEventListener('mouseleave',hideTip);
+        cell.addEventListener('mousemove',moveTip);
+      }
+      rowEl.appendChild(cell);
+    });
+    const plank=document.createElement('div');plank.className='plank';rowEl.appendChild(plank);
+    grid.appendChild(rowEl);
+  });
+}
+
+function fb(hdr,brand,col){
+  const s=document.createElement('span');s.className='bname-fb';s.textContent=(brand||'').toUpperCase();s.style.color=col.c;hdr.appendChild(s);
+}
+
+// ═══════════════════════════════════════════
+// NOTE TOOLTIP
+// ═══════════════════════════════════════════
+const tip=document.getElementById('ntip'); let tipT=null;
+function showTip(e,p){
+  const n=p.notes||{};
+  let h='';
+  if(n.top?.length)   h+=`<div class="ntip-row"><div class="ntip-lbl">Top</div><div class="ntip-pills">${n.top.map(x=>`<span class="ntip-pill">${x}</span>`).join('')}</div></div>`;
+  if(n.middle?.length)h+=`<div class="ntip-row"><div class="ntip-lbl">Heart</div><div class="ntip-pills">${n.middle.map(x=>`<span class="ntip-pill">${x}</span>`).join('')}</div></div>`;
+  if(n.base?.length)  h+=`<div class="ntip-row"><div class="ntip-lbl">Base</div><div class="ntip-pills">${n.base.map(x=>`<span class="ntip-pill">${x}</span>`).join('')}</div></div>`;
+  if(!h)return; tip.innerHTML=h; moveTip(e);
+  tipT=setTimeout(()=>tip.classList.add('show'),200);
+}
+function hideTip(){clearTimeout(tipT);tip.classList.remove('show');}
+function moveTip(e){tip.style.left=Math.min(e.clientX+14,window.innerWidth-200)+'px';tip.style.top=Math.min(e.clientY+14,window.innerHeight-150)+'px';}
+
+// ═══════════════════════════════════════════
+// DRAG REORDER
+// ═══════════════════════════════════════════
+let drag=null;
+function dsStart(e){drag=this.dataset.brand;this.classList.add('drag-src');e.dataTransfer.effectAllowed='move';}
+function dsOver(e){e.preventDefault();if(this.dataset.brand!==drag)this.classList.add('drag-over');}
+function dsLeave(){this.classList.remove('drag-over');}
+function dsDrop(e){
+  e.preventDefault();this.classList.remove('drag-over');
+  const to=this.dataset.brand;if(!drag||drag===to)return;
+  const fi=bOrder.indexOf(drag),ti=bOrder.indexOf(to);
+  if(fi<0||ti<0)return;
+  bOrder.splice(fi,1);bOrder.splice(ti,0,drag);
+  saveAll();layout();
+}
+function dsEnd(){document.querySelectorAll('.bhdr').forEach(h=>h.classList.remove('drag-src','drag-over'));drag=null;}
+
+// ═══════════════════════════════════════════
+// CONTEXT MENU
+// ═══════════════════════════════════════════
+const cmenu=document.getElementById('cmenu');
+// 브랜드 컬러 스와치 생성
+const csw=document.getElementById('cm-swatches');
+PAL.forEach((p,i)=>{
+  const s=document.createElement('div');s.className='swatch';s.style.background=p.c;s.dataset.i=i;
+  s.onclick=()=>{if(!ctxBrand)return;if(!bSettings[ctxBrand])bSettings[ctxBrand]={};bSettings[ctxBrand].colorIdx=i;saveAll();layout();closeCtx();};
+  csw.appendChild(s);
+});
+// 배경 컬러 스와치
+const bgw=document.getElementById('cm-bg');
+BG_PAL.forEach(col=>{
+  const s=document.createElement('div');s.className='bgsw';s.style.background=col;
+  s.style.border=col==='#ffffff'?'2px solid #eee':'2px solid transparent';
+  s.onclick=()=>{
+    document.getElementById('canvas').style.background=col;
+    const dark=col.startsWith('#2')||col==='#1a1a1a'||col.startsWith('#1');
+    ['shelf-title','shelf-footer'].forEach(id=>{
+      document.getElementById(id).style.color=dark?'#777':'#ccc';
+    });
+    saveAll();closeCtx();
+  };
+  bgw.appendChild(s);
+});
+
+function openCtx(e,brand){
+  ctxBrand=brand;
+  const s=bSettings[brand]||{};
+  csw.querySelectorAll('.swatch').forEach(sw=>sw.classList.toggle('on',s.colorIdx===Number(sw.dataset.i)));
+  cmenu.classList.remove('hide');
+  const x=Math.min(e.clientX,window.innerWidth-200),y=Math.min(e.clientY,window.innerHeight-290);
+  cmenu.style.left=x+'px';cmenu.style.top=y+'px';
+}
+function closeCtx(){cmenu.classList.add('hide');ctxBrand=null;}
+document.getElementById('cm-asc').onclick=()=>{if(!ctxBrand)return;if(!bSettings[ctxBrand])bSettings[ctxBrand]={};bSettings[ctxBrand].sortDesc=false;saveAll();layout();closeCtx();};
+document.getElementById('cm-desc').onclick=()=>{if(!ctxBrand)return;if(!bSettings[ctxBrand])bSettings[ctxBrand]={};bSettings[ctxBrand].sortDesc=true;saveAll();layout();closeCtx();};
+document.getElementById('cm-del-brand').onclick=async()=>{
+  if(!ctxBrand)return;
+  if(!await iconfirm(`"${ctxBrand}" 브랜드를 삭제할까요?`))return;
+  const sh=shelves[activeShelf];
+  const ids=shelfPerfumes().filter(p=>p.brand===ctxBrand).map(p=>p.id);
+  if(sh)sh.perfumeIds=sh.perfumeIds.filter(id=>!ids.includes(id));
+  bOrder=bOrder.filter(b=>b!==ctxBrand);
+  delete bSettings[ctxBrand];
+  saveAll();layout();closeCtx();
+};
+document.addEventListener('click',e=>{if(!cmenu.contains(e.target))closeCtx();});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeCtx();closeDet();document.getElementById('add-overlay').classList.add('hide');}
+});
+
+// ═══════════════════════════════════════════
+// DETAIL MODAL
+// ═══════════════════════════════════════════
+function openDet(p){
+  detId=p.id;
+  const fresh=()=>perfumes.find(x=>x.id===detId)||p;
+  const fp=fresh();
+  document.getElementById('det-img').src=fp.imgHq||`https://fimgs.net/mdimg/perfume-thumbs/375x500.${fp.id}.jpg`;
+  document.getElementById('det-brand').textContent=(fp.brand||'').toUpperCase();
+  document.getElementById('det-name').textContent=fp.name||'';
+  renderDetStars(fp.rating||0);
+  refreshStatus(fp);
+  renderDetTags();
+  renderDetNotes(fp);
+  // URL
+  const uw=document.getElementById('det-url');uw.innerHTML='';
+  if(fp.url){const a=document.createElement('span');a.className='durl';a.textContent='View on Fragrantica ↗';a.onclick=()=>window.api.openUrl(fp.url);uw.appendChild(a);}
+  document.getElementById('det-overlay').classList.remove('hide');
+}
+function closeDet(){document.getElementById('det-overlay').classList.add('hide');detId=null;}
+document.getElementById('det-close').onclick=closeDet;
+document.getElementById('det-overlay').onclick=e=>{if(e.target===document.getElementById('det-overlay'))closeDet();};
+document.getElementById('det-del').onclick=async()=>{
+  if(!detId)return;
+  if(!await iconfirm('Remove this perfume?'))return;
+  removePerfume(detId);closeDet();
+};
+
+function renderDetStars(r){
+  const w=document.getElementById('det-stars');w.innerHTML='';
+  for(let s=1;s<=5;s++){
+    const st=document.createElement('span');st.className='dstar'+(r>=s?' on':'');st.textContent='★';
+    st.onclick=()=>{if(!detId)return;const nr=r===s?0:s;updatePerfume(detId,{rating:nr});renderDetStars(nr);layout();};
+    w.appendChild(st);
+  }
+}
+function refreshStatus(p){
+  const ob=document.getElementById('det-owned'),wb=document.getElementById('det-wish');
+  ob.className='tbtn'+(p.owned?' on':'');
+  wb.className='tbtn'+(p.wishlist?' on':'');
+  ob.onclick=()=>{if(!detId)return;const fp=perfumes.find(x=>x.id===detId);if(!fp)return;const nv=!fp.owned;updatePerfume(detId,{owned:nv,wishlist:false});refreshStatus({...fp,owned:nv,wishlist:false});layout();};
+  wb.onclick=()=>{if(!detId)return;const fp=perfumes.find(x=>x.id===detId);if(!fp)return;const nv=!fp.wishlist;updatePerfume(detId,{wishlist:nv,owned:false});refreshStatus({...fp,wishlist:nv,owned:false});layout();};
+}
+function renderDetTags(){
+  if(!detId)return;
+  const fp=perfumes.find(x=>x.id===detId);
+  if(!fp)return;
+  const w=document.getElementById('det-tags');w.innerHTML='';
+  (fp.tags||[]).forEach(tag=>{
+    const c=document.createElement('span');c.className='tag-chip';
+    const txt=document.createTextNode(tag);c.appendChild(txt);
+    const rm=document.createElement('span');rm.className='tag-rm';rm.textContent='×';
+    rm.onclick=()=>{fp.tags=fp.tags.filter(t=>t!==tag);saveAll();renderDetTags();renderTagChips();layout();};
+    c.appendChild(rm);w.appendChild(c);
+  });
+  const add=document.createElement('button');add.className='tag-add';add.textContent='+ tag';
+  add.onclick=async()=>{
+    const t=await iask('Tag name:');
+    if(!t)return;
+    if(!fp.tags)fp.tags=[];
+    const tag=t.toLowerCase().trim();
+    if(!fp.tags.includes(tag))fp.tags.push(tag);
+    saveAll();renderDetTags();renderTagChips();layout();
+  };
+  w.appendChild(add);
+}
+function renderDetNotes(p){
+  const ns=document.getElementById('det-notes');ns.innerHTML='';
+  const n=p.notes||{};
+  if(!n.top?.length&&!n.middle?.length&&!n.base?.length)return;
+  const h=document.createElement('div');h.style='font-size:9px;color:#bbb;letter-spacing:.15em;text-transform:uppercase;margin:10px 0 6px;';h.textContent='NOTES';ns.appendChild(h);
+  [['Top',n.top],['Heart',n.middle],['Base',n.base]].forEach(([l,arr])=>{
+    if(!arr?.length)return;
+    const g=document.createElement('div');g.className='ng';
+    g.innerHTML=`<div class="ng-lbl">${l}</div><div class="ng-val">${arr.join(', ')}</div>`;
+    ns.appendChild(g);
+  });
+}
+
+// ═══════════════════════════════════════════
+// ADD MODAL
+// ═══════════════════════════════════════════
+document.getElementById('add-btn').onclick=()=>document.getElementById('add-overlay').classList.remove('hide');
+document.getElementById('add-close').onclick=()=>document.getElementById('add-overlay').classList.add('hide');
+document.getElementById('add-overlay').onclick=e=>{if(e.target===document.getElementById('add-overlay'))document.getElementById('add-overlay').classList.add('hide');};
+
+async function doAdd(){
+  const url=document.getElementById('add-url').value.trim();if(!url)return;
+  const btn=document.getElementById('add-go'),ld=document.getElementById('add-load');
+  btn.disabled=true;btn.textContent='...';ld.textContent='Fetching...';
+  const res=await window.api.scrape(url);
+  btn.disabled=false;btn.textContent='Add';ld.textContent='';
+  if(!res.ok){toast('Error: '+res.error);return;}
+  addPerfume(res.data);
+  document.getElementById('add-overlay').classList.add('hide');
+  document.getElementById('add-url').value='';
+}
+document.getElementById('add-go').onclick=doAdd;
+document.getElementById('add-url').addEventListener('keydown',e=>{if(e.key==='Enter')doAdd();});
+
+// ═══════════════════════════════════════════
+// FILTER BAR
+// ═══════════════════════════════════════════
+document.querySelectorAll('.chip[data-f]').forEach(c=>{
+  c.onclick=()=>{
+    document.querySelectorAll('.chip[data-f]').forEach(x=>x.classList.remove('on'));
+    c.classList.add('on');filterMode=c.dataset.f;layout();
+  };
+});
+
+// ═══════════════════════════════════════════
+// STARS TOGGLE
+// ═══════════════════════════════════════════
+document.getElementById('stars-btn').onclick=()=>{
+  showStars=!showStars;
+  const canvas=document.getElementById('canvas');
+  const btn=document.getElementById('stars-btn');
+  canvas.classList.toggle('hide-stars',!showStars);
+  btn.textContent=showStars?'★ show':'★ hide';
+  btn.style.opacity=showStars?'1':'0.5';
+};
+
+// ═══════════════════════════════════════════
+// FONT
+// ═══════════════════════════════════════════
+function applyFont(f){
+  font=f;
+  document.getElementById('canvas').style.fontFamily=`'${f}',sans-serif`;
+  document.getElementById('font-sel').value=f;
+}
+document.getElementById('font-sel').onchange=e=>{applyFont(e.target.value);saveAll();};
+
+// ═══════════════════════════════════════════
+// COLS
+// ═══════════════════════════════════════════
+document.getElementById('col-up').onclick=()=>{COLS=Math.min(28,COLS+1);document.getElementById('col-val').textContent=COLS;layout();saveAll();};
+document.getElementById('col-dn').onclick=()=>{COLS=Math.max(1,COLS-1);document.getElementById('col-val').textContent=COLS;layout();saveAll();};
+
+// ═══════════════════════════════════════════
+// ZOOM
+// ═══════════════════════════════════════════
+function applyZoom(s){
+  SZ=Math.max(SZ_MIN,Math.min(SZ_MAX,Math.round(s)));
+  document.getElementById('canvas').style.setProperty('--sz',SZ);
+  document.getElementById('zlbl').textContent=Math.round((SZ/54)*100)+'%';
+  document.getElementById('zth').style.left=((SZ-SZ_MIN)/(SZ_MAX-SZ_MIN)*76)+'px';
+  layout();
+}
+let zd=false;
+document.getElementById('zth').addEventListener('mousedown',e=>{zd=true;e.preventDefault();document.body.style.cursor='ew-resize';});
+window.addEventListener('mousemove',e=>{
+  if(!zd)return;
+  const r=document.getElementById('zt').getBoundingClientRect();
+  applyZoom(SZ_MIN+Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(SZ_MAX-SZ_MIN));
+});
+window.addEventListener('mouseup',()=>{zd=false;document.body.style.cursor='';});
+
+// ═══════════════════════════════════════════
+// PNG SAVE / COPY
+// ═══════════════════════════════════════════
+async function renderPng(){
+  const cv=document.getElementById('canvas');
+  const imgs=Array.from(cv.querySelectorAll('img'));
+  await Promise.all(imgs.map(i=>i.complete?Promise.resolve():new Promise(r=>{i.onload=r;i.onerror=r;})));
+  const SCALE=2;
+  imgs.forEach(i=>i.style.visibility='hidden');
+  const bg=await html2canvas(cv,{scale:SCALE,backgroundColor:null,useCORS:true,allowTaint:true,logging:false,imageTimeout:5000});
+  imgs.forEach(i=>i.style.visibility='');
+  const fin=document.createElement('canvas');fin.width=bg.width;fin.height=bg.height;
+  const ctx=fin.getContext('2d');
+  const bgCol=cv.style.background||'#ffffff';
+  ctx.fillStyle=bgCol;ctx.fillRect(0,0,fin.width,fin.height);
+  ctx.drawImage(bg,0,0);
+  const cr=cv.getBoundingClientRect();
+  await Promise.all(imgs.map(i=>new Promise(resolve=>{
+    if(!i.naturalWidth)return resolve();
+    const r=i.getBoundingClientRect();
+    const x=(r.left-cr.left)*SCALE,y=(r.top-cr.top)*SCALE,w=r.width*SCALE,h=r.height*SCALE;
+    const t=document.createElement('canvas');t.width=w;t.height=h;
+    t.getContext('2d').drawImage(i,0,0,w,h);
+    ctx.globalCompositeOperation='multiply';ctx.drawImage(t,x,y,w,h);
+    ctx.globalCompositeOperation='source-over';resolve();
+  })));
+  return fin.toDataURL('image/png');
+}
+document.getElementById('save-btn').onclick=async()=>{
+  const btn=document.getElementById('save-btn');btn.disabled=true;btn.textContent='...';
+  try{
+    const d=await renderPng();
+    const name=(document.getElementById('shelf-title').textContent.trim().replace(/\s+/g,'-').toLowerCase()||'collection');
+    const r=await window.api.pngSave(d,name);
+    if(r.ok)toast('Saved: '+r.filePath);else toast('Cancelled');
+  }catch(e){toast('Error: '+e.message);}
+  btn.disabled=false;btn.textContent='Save PNG';
+};
+document.getElementById('copy-btn').onclick=async()=>{
+  const btn=document.getElementById('copy-btn');btn.disabled=true;btn.textContent='...';
+  try{const d=await renderPng();await window.api.pngCopy(d);toast('Copied!');}
+  catch(e){toast('Error: '+e.message);}
+  btn.disabled=false;btn.textContent='Copy';
+};
+document.getElementById('export-btn').onclick=async()=>{const r=await window.api.jsonExport();if(r.ok)toast('Exported');};
+document.getElementById('import-btn').onclick=async()=>{
+  if(!await iconfirm('현재 데이터를 백업으로 교체합니다. 계속할까요?'))return;
+  const r=await window.api.jsonImport();
+  if(r.ok){toast('Imported! Reloading...');setTimeout(()=>location.reload(),800);}
+  else if(r?.error)toast('Error: '+r.error);
+};
+
+// title/footer contenteditable 저장
+document.getElementById('shelf-title').addEventListener('blur',()=>{
+  if(shelves[activeShelf])shelves[activeShelf].name=document.getElementById('shelf-title').textContent.trim();
+  renderTabs();saveAll();
+});
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+function toast(msg,dur=2500){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+async function init(){
+  perfumes = await window.api.dbGet('perfumes') || [];
+  const cfg = await window.api.dbGet('settings') || {};
+  bSettings  = cfg.bSettings  || {};
+  bOrder     = cfg.bOrder     || [];
+  COLS       = cfg.COLS       || 10;
+  activeShelf= cfg.activeShelf|| 'default';
+  shelfOrder = cfg.shelfOrder || ['default'];
+  if(cfg.font) applyFont(cfg.font);
+  document.getElementById('col-val').textContent = COLS;
+
+  const shdata = await window.api.dbGet('shelves') || {};
+  shelves    = shdata.shelves    || { default:{ name:'My Collection', perfumeIds:[] } };
+  shelfOrder = shdata.shelfOrder || ['default'];
+
+  // 기존 향수들 default shelf로 마이그레이션
+  if(shelves.default && shelves.default.perfumeIds.length===0 && perfumes.length>0){
+    shelves.default.perfumeIds = perfumes.map(p=>p.id);
+    await window.api.dbSet('shelves',{shelves,shelfOrder});
+  }
+
+  const sh = shelves[activeShelf];
+  if(sh) document.getElementById('shelf-title').textContent = sh.name;
+
+  renderTabs();
+  layout();
+}
+init();
+</script>
+</body>
+</html>

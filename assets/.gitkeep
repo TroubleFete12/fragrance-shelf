@@ -1,0 +1,4 @@
+# 이 폴더에 아이콘 파일을 넣으세요
+# icon.ico  → Windows 빌드용
+# icon.icns → macOS 빌드용
+# icon.png  → Linux 빌드용 (512x512 권장)
